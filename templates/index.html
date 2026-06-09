@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Skull Strangers Face ID</title>
+</head>
+
+<body>
+<h2>Live Face Recognition</h2>
+
+<video id="video" autoplay></video>
+<p id="name">Loading...</p>
+
+<script>
+const video = document.getElementById("video");
+const nameBox = document.getElementById("name");
+
+// start camera
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => video.srcObject = stream);
+
+function sendFrame() {
+    let canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    let ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+
+    canvas.toBlob(blob => {
+        let form = new FormData();
+        form.append("image", blob, "frame.jpg");
+
+        fetch("http://YOUR_SERVER_IP:5000/recognize", {
+            method: "POST",
+            body: form
+        })
+        .then(res => res.json())
+        .then(data => {
+            nameBox.innerText = "Name: " + data.name;
+        });
+
+    }, "image/jpeg");
+}
+
+// send frame every 1 second
+setInterval(sendFrame, 1000);
+
+</script>
+
+</body>
+</html>

@@ -1,4 +1,8 @@
 Flask==3.0.3
-deepface
-opencv-python==4.10.0.84
+gunicorn==21.2.0
+
 numpy==1.26.4
+opencv-python-headless==4.8.1.78
+
+tensorflow==2.15.0
+deepface==0.0.93

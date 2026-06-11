@@ -1,37 +1,47 @@
-from flask import Flask, request, jsonify
-import face_recognition
+from flask import Flask, request, jsonify, render_template
+from deepface import DeepFace
+import cv2
 import numpy as np
-import pickle
+import base64
 
 app = Flask(__name__)
 
-# Load known faces
-with open("db.pkl", "rb") as f:
-    db = pickle.load(f)
+# Build face database once
+database_path = "dataset"
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+def decode_image(data):
+    img_data = base64.b64decode(data.split(",")[1])
+    np_arr = np.frombuffer(img_data, np.uint8)
+    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    return img
+
 
 @app.route("/recognize", methods=["POST"])
 def recognize():
-    file = request.files["image"]
+    data = request.json["image"]
+    frame = decode_image(data)
 
-    image = face_recognition.load_image_file(file)
-    encs = face_recognition.face_encodings(image)
+    try:
+        result = DeepFace.find(
+            img_path=frame,
+            db_path=database_path,
+            enforce_detection=False
+        )
 
-    if len(encs) == 0:
-        return jsonify({"name": "No Face"})
+        if len(result[0]) > 0:
+            name = result[0]["identity"].iloc[0].split("/")[-2]
+            return jsonify({"name": name})
 
-    encoding = encs[0]
+        return jsonify({"name": "Unknown"})
 
-    names = [x["name"] for x in db]
-    encodings = [x["encoding"] for x in db]
+    except Exception as e:
+        return jsonify({"name": "Error", "error": str(e)})
 
-    matches = face_recognition.compare_faces(encodings, encoding)
-    distances = face_recognition.face_distance(encodings, encoding)
 
-    if len(distances) > 0:
-        best = np.argmin(distances)
-        if matches[best]:
-            return jsonify({"name": names[best]})
-
-    return jsonify({"name": "Unknown"})
-
-app.run(host="0.0.0.0", port=5000)
+if __name__ == "__main__":
+    app.run(debug=True)
